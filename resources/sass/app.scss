@@ -1,0 +1,40 @@
+
+// Fonts
+@import url('https://fonts.googleapis.com/css?family=Nunito');
+
+// Variables
+@import 'variables';
+
+// Bootstrap
+@import '~bootstrap/scss/bootstrap';
+
+.navbar-laravel {
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+body {
+	background-color: #1b1c1d;
+}
+
+.card-body {
+	padding: 0 !important;
+}
+.card-header {
+	background-color: #4c4c4c !important;
+	color: white !important;
+	font-size: 20px;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: #6d6f71;
+}
+::-webkit-scrollbar-button {
+	display: none;
+}
+::-webkit-scrollbar-corner {
+	display: none;
+}
