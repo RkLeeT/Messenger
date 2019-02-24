@@ -4,6 +4,10 @@
 			<li v-for="message in messages" :class="`message${message.to == contact.id ? ' sent' : ' received'}`">
 				<div class="text">
 					{{ message.text }}
+					<hr class="m-1">
+					<span class="time">
+	              		{{ message.created_at | moment }}
+					</span>
 				</div>
 			</li>
 		</ul>
@@ -11,6 +15,8 @@
 </template>
 
 <script>
+	import moment from 'moment';
+
 	export default {
 		props: {
 			contact: {
@@ -36,7 +42,12 @@
 			messages(messages) {
 				this.scrollToBottom();
 			}
-		}
+		},
+	    filters: {
+	    	moment(date) {
+	    		return moment(date).fromNow();
+	    	}
+	    }
 	};
 </script>
 
@@ -54,10 +65,11 @@
 			li {
 				&.message {
 					margin: 10px 0;
-					width: 100%;
+				    width: auto;
+				    clear: both;
 
 					.text {
-						max-width: 200px;
+						max-width: 300px;
 						border-radius: 5px;
 						padding: 12px;
 						display: inline-block;
@@ -65,15 +77,16 @@
 					}
 
 					&.received {
-						text-align: left;
-						.text {
-							background: gray;
-						}
+						float: left;
 					}
 					&.sent {
-						text-align: right;
+						float: right;
 						.text {
 							background: lightslategray;
+
+							.time {
+								float: right;
+							}
 						}
 					}
 				}

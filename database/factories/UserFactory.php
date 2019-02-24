@@ -14,7 +14,11 @@ use Faker\Generator as Faker;
 */
 
 $factory->define(App\User::class, function (Faker $faker) {
+
+    static $number = 1;
+
     return [
+        'id' => $number++,
         'name' => $faker->name,
         'phone' => $faker->phoneNumber,
         'email' => $faker->unique()->safeEmail,
@@ -28,12 +32,15 @@ $factory->define(App\User::class, function (Faker $faker) {
 
 $factory->define(App\Message::class, function (Faker $faker) {
 
+    static $number = 1;
+
 	do {
-		$from = rand(1, 5);
-		$to = rand(1, 5);
+		$from = rand(1, 12);
+		$to = rand(1, 12);
 	} while ($from == $to);
 
     return [
+        'id' => $number++,
         'from' => $from,
         'to' => $to,
         'text' => $faker->sentence,

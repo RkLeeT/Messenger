@@ -28,6 +28,11 @@ Vue.component('chat-app', require('./components/ChatApp.vue').default);
  * or customize the JavaScript scaffolding to fit your unique needs.
  */
 
+
+import moment from 'moment';
+
+
+
 const app = new Vue({
-    el: '#app'
+    el: '#app',
 });

@@ -1,11 +1,19 @@
 <template>
 	<div class="composer">
-		<textarea v-model="message" @keydown.enter="send" placeholder="Message.."></textarea>
+		<textarea v-model="message" @keyup="typingEvent" @keyup.enter="send" placeholder="Message.."></textarea>
 	</div>
 </template>
 
 <script>
 	export default {
+		props: {
+			user: {
+                type: Object
+            },
+            selectedContact: {
+				type: Object
+			}
+        },
 		data() {
 			return {
 				message: ''
@@ -19,6 +27,15 @@
 
 				this.$emit('send', this.message);
 				this.message = '';
+			},
+			typingEvent() {
+
+			    Echo.private(`typing.${this.selectedContact.id}`)
+			    	.whisper('typing', {
+		    	        user: this.user,
+        				typing: true
+		    	    });
+
 			}
 		}
 	};

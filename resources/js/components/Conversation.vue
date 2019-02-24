@@ -1,9 +1,11 @@
 <template>
 
 	<div class="conversation">
-		<h1>{{ contact ? contact.name : 'Select a Contact' }}</h1>
+		<h1>{{ contact ? contact.name : 'Select a Contact' }}
+			<span v-if="isTyping" style="float:right; color: #639a5d;">typing.....</span>
+		</h1>
 		<MessagesFeed :contact="contact" :messages="messages" />
-		<MessageComposer @send="sendMessage" />
+		<MessageComposer @send="sendMessage" :selectedContact="contact" :user="authUser" />
 	</div>
 	
 </template>
@@ -14,15 +16,38 @@
 
 	export default {
 		props: {
+			user: {
+                type: Object,
+            },
 			contact: {
-				type: Object,
-				default: null
+				type: Object
 			},
 			messages: {
 				type: Array,
 				default: []
 			}
 		},
+		data() {
+			return {
+				isTyping: false,
+				authUser: this.user
+			}
+		},
+        created() {
+            Echo.private(`typing.${this.user.id}`)
+                .listenForWhisper('typing', (e) => {
+
+                	if(this.contact && (e.user.id == this.contact.id)) {
+                		this.isTyping = e.typing;
+
+                		setTimeout(() => {
+                		    this.isTyping = false;
+                		}, 1500);
+                	}
+                    
+                });
+
+        },
 		methods: {
 			sendMessage(text) {
 				if (!this.contact) {

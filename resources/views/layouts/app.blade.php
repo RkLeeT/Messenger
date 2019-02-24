@@ -77,4 +77,15 @@
         </main>
     </div>
 </body>
+
+<!-- Scripts -->
+<script>
+  window.Laravel = {!! json_encode([
+    'csrfToken' => csrf_token(),
+    'user' => Auth::user(),
+    'pusherKey' => config('broadcasting.connections.pusher.key'),
+  ]) !!};
+</script>
+
+
 </html>
