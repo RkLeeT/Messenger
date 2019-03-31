@@ -28,4 +28,10 @@ class User extends Authenticatable
         'password', 'remember_token',
     ];
 
+    public function inGroup()
+    {
+        return $this->belongsToMany(Group::class, 'user_id', 'id');
+    }
+
 }
+

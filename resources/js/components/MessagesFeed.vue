@@ -3,6 +3,20 @@
 		<ul v-if="contact">
 			<li v-for="message in messages" :class="`message${message.to == contact.id ? ' sent' : ' received'}`">
 				<div class="text">
+					<span class="closeButton float-right clearfix" @click="deleteMsg(message, contact, selectedGroup)">X</span>
+					{{ message.text }}
+					<hr class="m-1">
+					<span class="time">
+	              		{{ message.created_at | moment }}
+					</span>
+				</div>
+			</li>
+		</ul>
+
+		<ul v-if="selectedGroup">
+			<li v-for="message in groupMessages" :class="`message${message.user_id == user.id ? ' sent' : ' received'}`">
+				<div class="text">
+					<span class="closeButton float-right clearfix" @click="deleteMsg(message, contact, selectedGroup)">X</span>
 					{{ message.text }}
 					<hr class="m-1">
 					<span class="time">
@@ -19,20 +33,37 @@
 
 	export default {
 		props: {
+			selectedGroup: {
+                type: Object
+            },
+			user: {
+                type: Object
+            },
 			contact: {
 				type: Object,
-
 			},
 			messages: {
 				type: Array,
-				required: true
-			}
+				required: false
+			},
+			groupMessages: {
+				type: Array,
+				required: false
+			},
 		},
 		methods: {
 			scrollToBottom() {
 				setTimeout(() => {
 					this.$refs.feed.scrollTop = this.$refs.feed.scrollHeight - this.$refs.feed.clientHeight;
 				}, 50);
+			},
+			deleteMsg(message, contact, selectedGroup)
+			{
+				this.$emit('deleteMsg', {
+					'message': message, 
+					'contact': contact, 
+					'selectedGroup': selectedGroup
+				});
 			}
 		},
 		watch: {
@@ -41,7 +72,10 @@
 			},
 			messages(messages) {
 				this.scrollToBottom();
-			}
+			},
+			groupMessages(groupMessages) {
+				this.scrollToBottom();
+			},
 		},
 	    filters: {
 	    	moment(date) {
@@ -55,7 +89,7 @@
 	.feed{
 		background: #4c4c4c;
 		height: 100%;
-		max-height: 440px;
+		height: 447px;
 		overflow: scroll;
 		overflow-x: hidden;
 		ul {
@@ -88,6 +122,9 @@
 								float: right;
 							}
 						}
+					}
+					.closeButton {
+						cursor: pointer;
 					}
 				}
 

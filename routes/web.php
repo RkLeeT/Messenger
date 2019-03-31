@@ -25,3 +25,20 @@ Route::get('/contacts', 'ContactsController@get')->name('contacts');
 Route::get('/conversation/{id}', 'ContactsController@getMessagesFor');
 
 Route::post('/conversation/send', 'ContactsController@send');
+
+
+Route::post('/createGroup', 'ContactsController@createGroup');
+
+Route::get('/getGroups', 'ContactsController@getGroups');
+
+
+Route::get('/conversation/group/{id}', 'ContactsController@getMessagesForGroup');
+
+Route::post('/conversation/group/send', 'ContactsController@groupSend');
+
+
+
+
+Route::post('/delete/group/msg/{id}', 'ContactsController@deleteGroupMsg');
+Route::post('/delete/msg/{id}', 'ContactsController@deleteMsg');
+

@@ -1784,8 +1784,11 @@ __webpack_require__.r(__webpack_exports__);
   data: function data() {
     return {
       selectedContact: null,
+      selectedGroup: null,
       messages: [],
-      contacts: []
+      groupMessages: [],
+      contacts: [],
+      groups: []
     };
   },
   mounted: function mounted() {
@@ -1798,10 +1801,21 @@ __webpack_require__.r(__webpack_exports__);
       console.log(response.data);
       _this.contacts = response.data;
     });
+    axios.get('/getGroups').then(function (response) {
+      console.log(response.data);
+      _this.groups = response.data;
+    });
   },
   methods: {
     startConversationWith: function startConversationWith(contact) {
       var _this2 = this;
+
+      this.selectedGroup = null;
+      this.groupMessages = null;
+
+      if (contact == null) {
+        return;
+      }
 
       this.updateUnreadCount(contact, true);
       axios.get("/conversation/".concat(contact.id)).then(function (response) {
@@ -1809,8 +1823,35 @@ __webpack_require__.r(__webpack_exports__);
         _this2.selectedContact = contact;
       });
     },
+    startConversationWithGroup: function startConversationWithGroup(group) {
+      var _this3 = this;
+
+      this.selectedContact = null;
+      this.messages = null;
+
+      if (group == null) {
+        return;
+      } // this.updateUnreadCount(group, true);
+
+
+      axios.get("/conversation/group/".concat(group.id)).then(function (response) {
+        _this3.groupMessages = response.data;
+        _this3.selectedGroup = group;
+      });
+    },
     saveNewMessage: function saveNewMessage(message) {
-      this.messages.push(message);
+      if (this.contact != null) {
+        this.messages.push(message);
+      } else {
+        this.groupMessages.push(message);
+      }
+    },
+    deleteMessage: function deleteMessage(message, contact, selectedGroup) {
+      if (contact != null) {
+        this.messages.splice(this.messages.indexOf(message.id), 1);
+      } else {
+        this.groupMessages.splice(this.groupMessages.indexOf(message.id), 1);
+      }
     },
     handleIncoming: function handleIncoming(message) {
       if (this.selectedContact && message.from == this.selectedContact.id) {
@@ -1834,6 +1875,16 @@ __webpack_require__.r(__webpack_exports__);
         }
 
         return single;
+      });
+    }
+  },
+  watch: {
+    updateContacts: function updateContacts(contacts) {
+      var _this4 = this;
+
+      axios.get('/contacts').then(function (response) {
+        console.log(response.data);
+        _this4.contacts = response.data;
       });
     }
   },
@@ -1877,6 +1928,43 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 /* harmony default export */ __webpack_exports__["default"] = ({
   props: {
     user: {
@@ -1885,23 +1973,35 @@ __webpack_require__.r(__webpack_exports__);
     contacts: {
       type: Array,
       default: []
+    },
+    groups: {
+      type: Array,
+      default: []
     }
   },
   data: function data() {
     return {
       selected: this.contacts.length ? this.contacts[0] : null,
-      userTyping: null
+      groupSelected: this.groups.length ? this.groups[0] : null,
+      userTyping: null,
+      onlineUsers: [],
+      formInfo: {}
     };
   },
   created: function created() {
     var _this = this;
 
     Echo.join("privateStatus").here(function (users) {
-      console.log(users.name);
+      _this.onlineUsers = users;
+      console.log("Online: ", users);
     }).joining(function (user) {
-      console.log(user.name);
+      _this.onlineUsers.push(user);
+
+      console.log("Joining: ", user.name);
     }).leaving(function (user) {
-      console.log(user.name);
+      _this.onlineUsers.splice(_this.onlineUsers.indexOf(user), 1);
+
+      console.log("Leaving: ", user.name);
     });
     Echo.private("typing.".concat(this.user.id)).listenForWhisper('typing', function (e) {
       _this.userTyping = e.user.id;
@@ -1912,8 +2012,28 @@ __webpack_require__.r(__webpack_exports__);
   },
   methods: {
     selectContact: function selectContact(contact) {
+      // this.groupSelected = null;
+      // this.$emit('groupSelected', null);
       this.selected = contact;
       this.$emit('selected', contact);
+    },
+    selectGroup: function selectGroup(group) {
+      // this.selected = null;
+      // this.$emit('selected', null);
+      this.groupSelected = group;
+      this.$emit('groupSelected', group);
+    },
+    submit: function submit() {
+      var _this2 = this;
+
+      axios.post('/createGroup', this.formInfo).then(function (response) {
+        alert('Message sent!');
+        _this2.formInfo = "";
+      }).catch(function (error) {
+        if (error.response.status === 422) {
+          _this2.errors = error.response.data.errors || {};
+        }
+      });
     }
   },
   computed: {
@@ -1922,8 +2042,18 @@ __webpack_require__.r(__webpack_exports__);
         // if (contact == this.selected) {
         //     return Infinity;
         // }
-        return contact.unread; // return contact.created_at;
+        return contact.latest; // return contact.created_at;
       }]).reverse();
+    },
+    sortedGroups: function sortedGroups() {
+      return _.sortBy(this.groups, [function (group) {
+        return group.created_at;
+      }]).reverse();
+    }
+  },
+  watch: {
+    updateContacts: function updateContacts(contacts) {
+      this.sortedContacts();
     }
   }
 });
@@ -1953,6 +2083,7 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
 
 
 /* harmony default export */ __webpack_exports__["default"] = ({
@@ -1963,7 +2094,14 @@ __webpack_require__.r(__webpack_exports__);
     contact: {
       type: Object
     },
+    selectedGroup: {
+      type: Object
+    },
     messages: {
+      type: Array,
+      default: []
+    },
+    groupMessages: {
       type: Array,
       default: []
     }
@@ -1990,16 +2128,44 @@ __webpack_require__.r(__webpack_exports__);
     sendMessage: function sendMessage(text) {
       var _this2 = this;
 
-      if (!this.contact) {
+      if (!this.contact && !this.selectedGroup) {
         return;
       }
 
-      axios.post('/conversation/send', {
-        contact_id: this.contact.id,
-        text: text
-      }).then(function (response) {
-        _this2.$emit('new', response.data);
-      });
+      if (this.contact != null) {
+        axios.post('/conversation/send', {
+          contact_id: this.contact.id,
+          text: text
+        }).then(function (response) {
+          _this2.$emit('new', response.data);
+        });
+      } else {
+        axios.post('/conversation/group/send', {
+          group_id: this.selectedGroup.id,
+          text: text
+        }).then(function (response) {
+          _this2.$emit('new', response.data);
+        });
+      }
+    },
+    deleteMsg: function deleteMsg(message, contact, selectedGroup) {
+      var _this3 = this;
+
+      if (contact != null) {
+        axios.post("/delete/msg/".concat(message.id), {
+          message: message,
+          contact: contact
+        }).then(function (response) {
+          _this3.$emit('delete', response.data);
+        });
+      } else {
+        axios.post("/delete/group/msg/".concat(message.id), {
+          message: message,
+          group: selectedGroup
+        }).then(function (response) {
+          _this3.$emit('delete', response.data);
+        });
+      }
     }
   },
   components: {
@@ -2030,6 +2196,9 @@ __webpack_require__.r(__webpack_exports__);
     user: {
       type: Object
     },
+    selectedGroup: {
+      type: Object
+    },
     selectedContact: {
       type: Object
     }
@@ -2050,11 +2219,11 @@ __webpack_require__.r(__webpack_exports__);
       this.$emit('send', this.message);
       this.message = '';
     },
-    typingEvent: function typingEvent() {
-      Echo.private("typing.".concat(this.selectedContact.id)).whisper('typing', {
-        user: this.user,
-        typing: true
-      });
+    typingEvent: function typingEvent() {// Echo.private(`typing.${this.selectedContact.id}`)
+      // 	.whisper('typing', {
+      //         user: this.user,
+      //  				typing: true
+      //     });
     }
   }
 });
@@ -2088,15 +2257,39 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
   props: {
+    selectedGroup: {
+      type: Object
+    },
+    user: {
+      type: Object
+    },
     contact: {
       type: Object
     },
     messages: {
       type: Array,
-      required: true
+      required: false
+    },
+    groupMessages: {
+      type: Array,
+      required: false
     }
   },
   methods: {
@@ -2106,6 +2299,13 @@ __webpack_require__.r(__webpack_exports__);
       setTimeout(function () {
         _this.$refs.feed.scrollTop = _this.$refs.feed.scrollHeight - _this.$refs.feed.clientHeight;
       }, 50);
+    },
+    deleteMsg: function deleteMsg(message, contact, selectedGroup) {
+      this.$emit('deleteMsg', {
+        'message': message,
+        'contact': contact,
+        'selectedGroup': selectedGroup
+      });
     }
   },
   watch: {
@@ -2113,6 +2313,9 @@ __webpack_require__.r(__webpack_exports__);
       this.scrollToBottom();
     },
     messages: function messages(_messages) {
+      this.scrollToBottom();
+    },
+    groupMessages: function groupMessages(_groupMessages) {
       this.scrollToBottom();
     }
   },
@@ -6601,7 +6804,7 @@ exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loa
 
 
 // module
-exports.push([module.i, ".contacts-list[data-v-484f3208] {\n  flex: 2;\n  max-height: 590px;\n  overflow: scroll;\n  overflow-x: hidden;\n  border-left: 1px solid lightgray;\n  background: #b9b9b9;\n}\n.contacts-list ul[data-v-484f3208] {\n  list-style-type: none;\n  padding-left: 0;\n}\n.contacts-list ul li[data-v-484f3208] {\n  display: flex;\n  padding: 2px;\n  border-bottom: 1px solid lightgray;\n  height: 80px;\n  position: relative;\n  cursor: pointer;\n}\n.contacts-list ul li.selected[data-v-484f3208] {\n  background: #e4e4e4;\n}\n.contacts-list ul li span.unread[data-v-484f3208] {\n  background: #85e085;\n  color: white;\n  min-width: 20px;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  position: absolute;\n  right: 5px;\n  top: 25px;\n  font-weight: 700;\n  font-size: 13px;\n  line-height: 20px;\n  padding: 0 6px;\n  border-radius: 5px;\n}\n.contacts-list ul li .avatar[data-v-484f3208] {\n  flex: 1;\n  display: flex;\n  align-items: center;\n}\n.contacts-list ul li .avatar img[data-v-484f3208] {\n  width: 40px;\n  border-radius: 50%;\n  margin: 0 auto;\n}\n.contacts-list ul li .contact[data-v-484f3208] {\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  flex: 4;\n  font-size: 12px;\n  overflow: hidden;\n}\n.contacts-list ul li .contact p[data-v-484f3208] {\n  margin: 0;\n}\n.contacts-list ul li .contact p.name[data-v-484f3208] {\n  font-weight: bold;\n}\n.contacts-list ul li .contact .typing[data-v-484f3208] {\n  position: absolute;\n  top: 7px;\n  right: 10px;\n  color: #cbffc5;\n}", ""]);
+exports.push([module.i, ".contacts-list[data-v-484f3208] {\n  flex: 2;\n  height: 592px;\n  overflow: scroll;\n  overflow-x: hidden;\n  border-left: 1px solid lightgray;\n  background: #b9b9b9;\n}\n.contacts-list .searchContact[data-v-484f3208] {\n  width: 100%;\n  height: 33px;\n  background: #9ea7af;\n  color: white;\n  padding: 20px;\n  font-size: 20px;\n  border: 2px solid #cce3f6;\n}\n.contacts-list .searchContact[data-v-484f3208]::-webkit-input-placeholder {\n  color: white;\n}\n.contacts-list .searchContact[data-v-484f3208]:-ms-input-placeholder {\n  color: white;\n}\n.contacts-list .searchContact[data-v-484f3208]::-ms-input-placeholder {\n  color: white;\n}\n.contacts-list .searchContact[data-v-484f3208]::placeholder {\n  color: white;\n}\n.contacts-list ul.nav li[data-v-484f3208] {\n  text-align: center;\n  width: 50%;\n  color: #6c757d;\n  font-size: 17px;\n  box-sizing: border-box;\n  font-weight: bold;\n}\n.contacts-list ul.innerList[data-v-484f3208] {\n  list-style-type: none;\n  padding-left: 0;\n}\n.contacts-list ul.innerList li[data-v-484f3208] {\n  display: flex;\n  padding: 2px;\n  border-bottom: 1px solid lightgray;\n  height: 80px;\n  position: relative;\n  cursor: pointer;\n}\n.contacts-list ul.innerList li.selected[data-v-484f3208] {\n  background: #e4e4e4;\n}\n.contacts-list ul.innerList li span.unread[data-v-484f3208] {\n  background: #cce3f6;\n  color: white;\n  min-width: 20px;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  position: absolute;\n  right: 5px;\n  top: 25px;\n  font-weight: 700;\n  font-size: 13px;\n  line-height: 20px;\n  padding: 0 6px;\n  border-radius: 5px;\n}\n.contacts-list ul.innerList li .avatar[data-v-484f3208] {\n  flex: 1;\n  display: flex;\n  align-items: center;\n}\n.contacts-list ul.innerList li .avatar img[data-v-484f3208] {\n  width: 40px;\n  border-radius: 50%;\n  margin: 0 auto;\n  border: 3px solid #909090;\n}\n.contacts-list ul.innerList li .avatar img.online[data-v-484f3208] {\n  border: 3px solid #cce3f6;\n}\n.contacts-list ul.innerList li .contact[data-v-484f3208] {\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  flex: 4;\n  font-size: 12px;\n  overflow: hidden;\n}\n.contacts-list ul.innerList li .contact p[data-v-484f3208] {\n  margin: 0;\n}\n.contacts-list ul.innerList li .contact p.name[data-v-484f3208] {\n  font-weight: bold;\n}\n.contacts-list ul.innerList li .contact .typing[data-v-484f3208] {\n  position: absolute;\n  top: 7px;\n  right: 10px;\n  color: #cbffc5;\n}", ""]);
 
 // exports
 
@@ -6658,7 +6861,7 @@ exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loa
 
 
 // module
-exports.push([module.i, ".feed[data-v-4b6ab3f5] {\n  background: #4c4c4c;\n  height: 100%;\n  max-height: 440px;\n  overflow: scroll;\n  overflow-x: hidden;\n}\n.feed ul[data-v-4b6ab3f5] {\n  list-style-type: none;\n  padding: 5px;\n}\n.feed ul li.message[data-v-4b6ab3f5] {\n  margin: 10px 0;\n  width: auto;\n  clear: both;\n}\n.feed ul li.message .text[data-v-4b6ab3f5] {\n  max-width: 300px;\n  border-radius: 5px;\n  padding: 12px;\n  display: inline-block;\n  background: gray;\n}\n.feed ul li.message.received[data-v-4b6ab3f5] {\n  float: left;\n}\n.feed ul li.message.sent[data-v-4b6ab3f5] {\n  float: right;\n}\n.feed ul li.message.sent .text[data-v-4b6ab3f5] {\n  background: lightslategray;\n}\n.feed ul li.message.sent .text .time[data-v-4b6ab3f5] {\n  float: right;\n}", ""]);
+exports.push([module.i, ".feed[data-v-4b6ab3f5] {\n  background: #4c4c4c;\n  height: 100%;\n  height: 447px;\n  overflow: scroll;\n  overflow-x: hidden;\n}\n.feed ul[data-v-4b6ab3f5] {\n  list-style-type: none;\n  padding: 5px;\n}\n.feed ul li.message[data-v-4b6ab3f5] {\n  margin: 10px 0;\n  width: auto;\n  clear: both;\n}\n.feed ul li.message .text[data-v-4b6ab3f5] {\n  max-width: 300px;\n  border-radius: 5px;\n  padding: 12px;\n  display: inline-block;\n  background: gray;\n}\n.feed ul li.message.received[data-v-4b6ab3f5] {\n  float: left;\n}\n.feed ul li.message.sent[data-v-4b6ab3f5] {\n  float: right;\n}\n.feed ul li.message.sent .text[data-v-4b6ab3f5] {\n  background: lightslategray;\n}\n.feed ul li.message.sent .text .time[data-v-4b6ab3f5] {\n  float: right;\n}\n.feed ul li.message .closeButton[data-v-4b6ab3f5] {\n  cursor: pointer;\n}", ""]);
 
 // exports
 
@@ -65769,15 +65972,20 @@ var render = function() {
       _c("Conversation", {
         attrs: {
           contact: _vm.selectedContact,
+          selectedGroup: _vm.selectedGroup,
           messages: _vm.messages,
+          groupMessages: _vm.groupMessages,
           user: _vm.user
         },
-        on: { new: _vm.saveNewMessage }
+        on: { new: _vm.saveNewMessage, delete: _vm.deleteMessage }
       }),
       _vm._v(" "),
       _c("ContactsList", {
-        attrs: { contacts: _vm.contacts, user: _vm.user },
-        on: { selected: _vm.startConversationWith }
+        attrs: { contacts: _vm.contacts, groups: _vm.groups, user: _vm.user },
+        on: {
+          selected: _vm.startConversationWith,
+          groupSelected: _vm.startConversationWithGroup
+        }
       })
     ],
     1
@@ -65806,52 +66014,194 @@ var render = function() {
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
   return _c("div", { staticClass: "contacts-list" }, [
-    _c(
-      "ul",
-      _vm._l(_vm.sortedContacts, function(contact) {
-        return _c(
-          "li",
+    _c("input", {
+      staticClass: "searchContact",
+      attrs: { type: "text", placeholder: "Search.." }
+    }),
+    _vm._v(" "),
+    _vm._m(0),
+    _vm._v(" "),
+    _c("div", { staticClass: "tab-content", attrs: { id: "myTabContent" } }, [
+      _c(
+        "div",
+        { staticClass: "tab-pane fade show active", attrs: { id: "all" } },
+        [
+          _c(
+            "ul",
+            { staticClass: "innerList" },
+            _vm._l(_vm.sortedContacts, function(contact) {
+              return _c(
+                "li",
+                {
+                  key: contact.id,
+                  class: { selected: contact == _vm.selected },
+                  on: {
+                    click: function($event) {
+                      return _vm.selectContact(contact)
+                    }
+                  }
+                },
+                [
+                  _c("div", { staticClass: "avatar" }, [
+                    _c("img", {
+                      class: {
+                        online: _vm.onlineUsers.find(function(onlineUser) {
+                          return onlineUser.id === contact.id
+                        })
+                          ? 1
+                          : 0
+                      },
+                      attrs: { src: contact.profile_image, alt: contact.name }
+                    })
+                  ]),
+                  _vm._v(" "),
+                  _c("div", { staticClass: "contact" }, [
+                    _c("p", { staticClass: "name" }, [
+                      _vm._v(_vm._s(contact.name))
+                    ]),
+                    _vm._v(" "),
+                    _c("p", { staticClass: "email" }, [
+                      _vm._v(_vm._s(contact.email))
+                    ]),
+                    _vm._v(" "),
+                    _vm.userTyping == contact.id
+                      ? _c("span", { staticClass: "typing" }, [
+                          _vm._v("typing...")
+                        ])
+                      : _vm._e()
+                  ]),
+                  _vm._v(" "),
+                  contact.unread
+                    ? _c("span", { staticClass: "unread" }, [
+                        _vm._v(_vm._s(contact.unread))
+                      ])
+                    : _vm._e()
+                ]
+              )
+            }),
+            0
+          )
+        ]
+      ),
+      _vm._v(" "),
+      _c("div", { staticClass: "tab-pane fade", attrs: { id: "groupsTab" } }, [
+        _c(
+          "form",
           {
-            key: contact.id,
-            class: { selected: contact == _vm.selected },
             on: {
-              click: function($event) {
-                return _vm.selectContact(contact)
+              submit: function($event) {
+                $event.preventDefault()
+                return _vm.submit($event)
               }
             }
           },
           [
-            _c("div", { staticClass: "avatar" }, [
-              _c("img", {
-                attrs: { src: contact.profile_image, alt: contact.name }
+            _c("div", { staticClass: "form-group" }, [
+              _c("label", { attrs: { for: "name" } }, [_vm._v("Name")]),
+              _vm._v(" "),
+              _c("input", {
+                directives: [
+                  {
+                    name: "model",
+                    rawName: "v-model",
+                    value: _vm.formInfo.name,
+                    expression: "formInfo.name"
+                  }
+                ],
+                staticClass: "form-control",
+                attrs: {
+                  type: "text",
+                  name: "name",
+                  id: "name",
+                  value: "PATCH"
+                },
+                domProps: { value: _vm.formInfo.name },
+                on: {
+                  input: function($event) {
+                    if ($event.target.composing) {
+                      return
+                    }
+                    _vm.$set(_vm.formInfo, "name", $event.target.value)
+                  }
+                }
               })
             ]),
             _vm._v(" "),
-            _c("div", { staticClass: "contact" }, [
-              _c("p", { staticClass: "name" }, [_vm._v(_vm._s(contact.name))]),
-              _vm._v(" "),
-              _c("p", { staticClass: "email" }, [
-                _vm._v(_vm._s(contact.email))
-              ]),
-              _vm._v(" "),
-              _vm.userTyping == contact.id
-                ? _c("span", { staticClass: "typing" }, [_vm._v("typing...")])
-                : _vm._e()
-            ]),
-            _vm._v(" "),
-            contact.unread
-              ? _c("span", { staticClass: "unread" }, [
-                  _vm._v(_vm._s(contact.unread))
-                ])
-              : _vm._e()
+            _c(
+              "button",
+              { staticClass: "btn btn-primary", attrs: { type: "submit" } },
+              [_vm._v("Create Group")]
+            )
           ]
+        ),
+        _vm._v(" "),
+        _c(
+          "ul",
+          { staticClass: "innerList" },
+          _vm._l(_vm.sortedGroups, function(group) {
+            return _c(
+              "li",
+              {
+                key: group.id,
+                on: {
+                  click: function($event) {
+                    return _vm.selectGroup(group)
+                  }
+                }
+              },
+              [
+                _c("div", { staticClass: "avatar" }, [
+                  _c("img", {
+                    attrs: { src: group.profile_image, alt: group.name }
+                  })
+                ]),
+                _vm._v(" "),
+                _c("div", { staticClass: "contact" }, [
+                  _c("p", { staticClass: "name" }, [_vm._v(_vm._s(group.name))])
+                ])
+              ]
+            )
+          }),
+          0
         )
-      }),
-      0
-    )
+      ])
+    ])
   ])
 }
-var staticRenderFns = []
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("ul", { staticClass: "nav nav-tabs", attrs: { id: "myTab" } }, [
+      _c("li", { staticClass: "nav-item" }, [
+        _c(
+          "a",
+          {
+            staticClass: "nav-link active",
+            attrs: { id: "all-tab", "data-toggle": "tab", href: "#all" }
+          },
+          [_vm._v("All")]
+        )
+      ]),
+      _vm._v(" "),
+      _c("li", { staticClass: "nav-item" }, [
+        _c(
+          "a",
+          {
+            staticClass: "nav-link",
+            attrs: {
+              id: "groups-tab",
+              "data-toggle": "tab",
+              href: "#groupsTab"
+            }
+          },
+          [_vm._v("Groups")]
+        )
+      ])
+    ])
+  }
+]
 render._withStripped = true
 
 
@@ -65879,7 +66229,13 @@ var render = function() {
     [
       _c("h1", [
         _vm._v(
-          _vm._s(_vm.contact ? _vm.contact.name : "Select a Contact") + "\n\t\t"
+          _vm._s(
+            _vm.contact
+              ? _vm.contact.name
+              : _vm.selectedGroup
+              ? _vm.selectedGroup.name
+              : "Select a Contact"
+          ) + "\n\t\t"
         ),
         _vm.isTyping
           ? _c("span", { staticStyle: { float: "right", color: "#639a5d" } }, [
@@ -65889,11 +66245,22 @@ var render = function() {
       ]),
       _vm._v(" "),
       _c("MessagesFeed", {
-        attrs: { contact: _vm.contact, messages: _vm.messages }
+        attrs: {
+          contact: _vm.contact,
+          selectedGroup: _vm.selectedGroup,
+          messages: _vm.messages,
+          groupMessages: _vm.groupMessages,
+          user: _vm.authUser
+        },
+        on: { deleteMsg: _vm.deleteMsg }
       }),
       _vm._v(" "),
       _c("MessageComposer", {
-        attrs: { selectedContact: _vm.contact, user: _vm.authUser },
+        attrs: {
+          selectedContact: _vm.contact,
+          selectedGroup: _vm.selectedGroup,
+          user: _vm.authUser
+        },
         on: { send: _vm.sendMessage }
       })
     ],
@@ -65993,6 +66360,69 @@ var render = function() {
               },
               [
                 _c("div", { staticClass: "text" }, [
+                  _c(
+                    "span",
+                    {
+                      staticClass: "closeButton float-right clearfix",
+                      on: {
+                        click: function($event) {
+                          return _vm.deleteMsg(
+                            message,
+                            _vm.contact,
+                            _vm.selectedGroup
+                          )
+                        }
+                      }
+                    },
+                    [_vm._v("X")]
+                  ),
+                  _vm._v("\n\t\t\t\t" + _vm._s(message.text) + "\n\t\t\t\t"),
+                  _c("hr", { staticClass: "m-1" }),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "time" }, [
+                    _vm._v(
+                      "\n              \t\t" +
+                        _vm._s(_vm._f("moment")(message.created_at)) +
+                        "\n\t\t\t\t"
+                    )
+                  ])
+                ])
+              ]
+            )
+          }),
+          0
+        )
+      : _vm._e(),
+    _vm._v(" "),
+    _vm.selectedGroup
+      ? _c(
+          "ul",
+          _vm._l(_vm.groupMessages, function(message) {
+            return _c(
+              "li",
+              {
+                class:
+                  "message" +
+                  (message.user_id == _vm.user.id ? " sent" : " received")
+              },
+              [
+                _c("div", { staticClass: "text" }, [
+                  _c(
+                    "span",
+                    {
+                      staticClass: "closeButton float-right clearfix",
+                      on: {
+                        click: function($event) {
+                          return _vm.deleteMsg(
+                            message,
+                            _vm.contact,
+                            _vm.selectedGroup
+                          )
+                        }
+                      }
+                    },
+                    [_vm._v("X")]
+                  ),
                   _vm._v("\n\t\t\t\t" + _vm._s(message.text) + "\n\t\t\t\t"),
                   _c("hr", { staticClass: "m-1" }),
                   _vm._v(" "),
@@ -66135,7 +66565,7 @@ function normalizeComponent (
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global, setImmediate) {/*!
- * Vue.js v2.6.6
+ * Vue.js v2.6.9
  * (c) 2014-2019 Evan You
  * Released under the MIT License.
  */
@@ -66613,7 +67043,7 @@ var config = ({
  * using https://www.w3.org/TR/html53/semantics-scripting.html#potentialcustomelementname
  * skipping \u10000-\uEFFFF due to it freezing up PhantomJS
  */
-var unicodeLetters = 'a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD';
+var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
 
 /**
  * Check if a string starts with $ or _
@@ -66638,7 +67068,7 @@ function def (obj, key, val, enumerable) {
 /**
  * Parse simple path.
  */
-var bailRE = new RegExp(("[^" + unicodeLetters + ".$_\\d]"));
+var bailRE = new RegExp(("[^" + (unicodeRegExp.source) + ".$_\\d]"));
 function parsePath (path) {
   if (bailRE.test(path)) {
     return
@@ -67542,7 +67972,7 @@ function checkComponents (options) {
 }
 
 function validateComponentName (name) {
-  if (!new RegExp(("^[a-zA-Z][\\-\\.0-9_" + unicodeLetters + "]*$")).test(name)) {
+  if (!new RegExp(("^[a-zA-Z][\\-\\.0-9_" + (unicodeRegExp.source) + "]*$")).test(name)) {
     warn(
       'Invalid component name: "' + name + '". Component names ' +
       'should conform to valid custom element name in html5 specification.'
@@ -67957,23 +68387,30 @@ function isBoolean () {
 /*  */
 
 function handleError (err, vm, info) {
-  if (vm) {
-    var cur = vm;
-    while ((cur = cur.$parent)) {
-      var hooks = cur.$options.errorCaptured;
-      if (hooks) {
-        for (var i = 0; i < hooks.length; i++) {
-          try {
-            var capture = hooks[i].call(cur, err, vm, info) === false;
-            if (capture) { return }
-          } catch (e) {
-            globalHandleError(e, cur, 'errorCaptured hook');
+  // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
+  // See: https://github.com/vuejs/vuex/issues/1505
+  pushTarget();
+  try {
+    if (vm) {
+      var cur = vm;
+      while ((cur = cur.$parent)) {
+        var hooks = cur.$options.errorCaptured;
+        if (hooks) {
+          for (var i = 0; i < hooks.length; i++) {
+            try {
+              var capture = hooks[i].call(cur, err, vm, info) === false;
+              if (capture) { return }
+            } catch (e) {
+              globalHandleError(e, cur, 'errorCaptured hook');
+            }
           }
         }
       }
     }
+    globalHandleError(err, vm, info);
+  } finally {
+    popTarget();
   }
-  globalHandleError(err, vm, info);
 }
 
 function invokeWithErrorHandling (
@@ -67986,8 +68423,11 @@ function invokeWithErrorHandling (
   var res;
   try {
     res = args ? handler.apply(context, args) : handler.call(context);
-    if (res && !res._isVue && isPromise(res)) {
+    if (res && !res._isVue && isPromise(res) && !res._handled) {
       res.catch(function (e) { return handleError(e, vm, info + " (Promise/async)"); });
+      // issue #9511
+      // avoid catch triggering multiple times when nested calls
+      res._handled = true;
     }
   } catch (e) {
     handleError(e, vm, info);
@@ -68670,32 +69110,37 @@ function normalizeScopedSlots (
   prevSlots
 ) {
   var res;
+  var isStable = slots ? !!slots.$stable : true;
+  var hasNormalSlots = Object.keys(normalSlots).length > 0;
+  var key = slots && slots.$key;
   if (!slots) {
     res = {};
   } else if (slots._normalized) {
     // fast path 1: child component re-render only, parent did not change
     return slots._normalized
   } else if (
-    slots.$stable &&
+    isStable &&
     prevSlots &&
     prevSlots !== emptyObject &&
-    Object.keys(normalSlots).length === 0
+    key === prevSlots.$key &&
+    !hasNormalSlots &&
+    !prevSlots.$hasNormal
   ) {
     // fast path 2: stable scoped slots w/ no normal slots to proxy,
     // only need to normalize once
     return prevSlots
   } else {
     res = {};
-    for (var key in slots) {
-      if (slots[key] && key[0] !== '$') {
-        res[key] = normalizeScopedSlot(normalSlots, key, slots[key]);
+    for (var key$1 in slots) {
+      if (slots[key$1] && key$1[0] !== '$') {
+        res[key$1] = normalizeScopedSlot(normalSlots, key$1, slots[key$1]);
       }
     }
   }
   // expose normal slots on scopedSlots
-  for (var key$1 in normalSlots) {
-    if (!(key$1 in res)) {
-      res[key$1] = proxyNormalSlot(normalSlots, key$1);
+  for (var key$2 in normalSlots) {
+    if (!(key$2 in res)) {
+      res[key$2] = proxyNormalSlot(normalSlots, key$2);
     }
   }
   // avoriaz seems to mock a non-extensible $scopedSlots object
@@ -68703,7 +69148,9 @@ function normalizeScopedSlots (
   if (slots && Object.isExtensible(slots)) {
     (slots)._normalized = res;
   }
-  def(res, '$stable', slots ? !!slots.$stable : true);
+  def(res, '$stable', isStable);
+  def(res, '$key', key);
+  def(res, '$hasNormal', hasNormalSlots);
   return res
 }
 
@@ -68713,8 +69160,10 @@ function normalizeScopedSlot(normalSlots, key, fn) {
     res = res && typeof res === 'object' && !Array.isArray(res)
       ? [res] // single vnode
       : normalizeChildren(res);
-    return res && res.length === 0
-      ? undefined
+    return res && (
+      res.length === 0 ||
+      (res.length === 1 && res[0].isComment) // #9658
+    ) ? undefined
       : res
   };
   // this is a slot using the new v-slot syntax without scope. although it is
@@ -68894,12 +69343,13 @@ function bindObjectProps (
             : data.attrs || (data.attrs = {});
         }
         var camelizedKey = camelize(key);
-        if (!(key in hash) && !(camelizedKey in hash)) {
+        var hyphenatedKey = hyphenate(key);
+        if (!(camelizedKey in hash) && !(hyphenatedKey in hash)) {
           hash[key] = value[key];
 
           if (isSync) {
             var on = data.on || (data.on = {});
-            on[("update:" + camelizedKey)] = function ($event) {
+            on[("update:" + key)] = function ($event) {
               value[key] = $event;
             };
           }
@@ -68998,14 +69448,16 @@ function bindObjectListeners (data, value) {
 
 function resolveScopedSlots (
   fns, // see flow/vnode
+  res,
+  // the following are added in 2.6
   hasDynamicKeys,
-  res
+  contentHashKey
 ) {
   res = res || { $stable: !hasDynamicKeys };
   for (var i = 0; i < fns.length; i++) {
     var slot = fns[i];
     if (Array.isArray(slot)) {
-      resolveScopedSlots(slot, hasDynamicKeys, res);
+      resolveScopedSlots(slot, res, hasDynamicKeys);
     } else if (slot) {
       // marker for reverse proxying v-slot without scope on this.$slots
       if (slot.proxy) {
@@ -69013,6 +69465,9 @@ function resolveScopedSlots (
       }
       res[slot.key] = slot.fn;
     }
+  }
+  if (contentHashKey) {
+    (res).$key = contentHashKey;
   }
   return res
 }
@@ -69728,17 +70183,21 @@ function resolveAsyncComponent (
     return factory.resolved
   }
 
+  var owner = currentRenderingInstance;
+  if (owner && isDef(factory.owners) && factory.owners.indexOf(owner) === -1) {
+    // already pending
+    factory.owners.push(owner);
+  }
+
   if (isTrue(factory.loading) && isDef(factory.loadingComp)) {
     return factory.loadingComp
   }
 
-  var owner = currentRenderingInstance;
-  if (isDef(factory.owners)) {
-    // already pending
-    factory.owners.push(owner);
-  } else {
+  if (owner && !isDef(factory.owners)) {
     var owners = factory.owners = [owner];
-    var sync = true;
+    var sync = true
+
+    ;(owner).$on('hook:destroyed', function () { return remove(owners, owner); });
 
     var forceRender = function (renderCompleted) {
       for (var i = 0, l = owners.length; i < l; i++) {
@@ -70191,9 +70650,12 @@ function updateChildComponent (
   // check if there are dynamic scopedSlots (hand-written or compiled but with
   // dynamic slot names). Static scoped slots compiled from template has the
   // "$stable" marker.
+  var newScopedSlots = parentVnode.data.scopedSlots;
+  var oldScopedSlots = vm.$scopedSlots;
   var hasDynamicScopedSlot = !!(
-    (parentVnode.data.scopedSlots && !parentVnode.data.scopedSlots.$stable) ||
-    (vm.$scopedSlots !== emptyObject && !vm.$scopedSlots.$stable)
+    (newScopedSlots && !newScopedSlots.$stable) ||
+    (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
+    (newScopedSlots && vm.$scopedSlots.$key !== newScopedSlots.$key)
   );
 
   // Any static slot children from the parent may have changed during parent's
@@ -70346,10 +70808,15 @@ var getNow = Date.now;
 // timestamp can either be hi-res (relative to page load) or low-res
 // (relative to UNIX epoch), so in order to compare time we have to use the
 // same timestamp type when saving the flush timestamp.
-if (inBrowser && getNow() > document.createEvent('Event').timeStamp) {
-  // if the low-res timestamp which is bigger than the event timestamp
-  // (which is evaluated AFTER) it means the event is using a hi-res timestamp,
-  // and we need to use the hi-res version for event listeners as well.
+if (
+  inBrowser &&
+  window.performance &&
+  typeof performance.now === 'function' &&
+  document.createEvent('Event').timeStamp <= performance.now()
+) {
+  // if the event timestamp is bigger than the hi-res timestamp
+  // (which is evaluated AFTER) it means the event is using a lo-res timestamp,
+  // and we need to use the lo-res version for event listeners as well.
   getNow = function () { return performance.now(); };
 }
 
@@ -71515,7 +71982,7 @@ Object.defineProperty(Vue, 'FunctionalRenderContext', {
   value: FunctionalRenderContext
 });
 
-Vue.version = '2.6.6';
+Vue.version = '2.6.9';
 
 /*  */
 
@@ -73607,8 +74074,10 @@ function add$1 (
         e.target === e.currentTarget ||
         // event is fired after handler attachment
         e.timeStamp >= attachedTimestamp ||
-        // #9462 bail for iOS 9 bug: event.timeStamp is 0 after history.pushState
-        e.timeStamp === 0 ||
+        // bail for environments that have buggy event.timeStamp implementations
+        // #9462 iOS 9 bug: event.timeStamp is 0 after history.pushState
+        // #9681 QtWebEngine event.timeStamp is negative value
+        e.timeStamp <= 0 ||
         // #9448 bail if event is fired in another document in a multi-page
         // electron/nw.js app, since event.timeStamp will be using a different
         // starting reference
@@ -73694,15 +74163,7 @@ function updateDOMProps (oldVnode, vnode) {
       }
     }
 
-    // skip the update if old and new VDOM state is the same.
-    // the only exception is `value` where the DOM value may be temporarily
-    // out of sync with VDOM state due to focus, composition and modifiers.
-    // This also covers #4521 by skipping the unnecesarry `checked` update.
-    if (key !== 'value' && cur === oldProps[key]) {
-      continue
-    }
-
-    if (key === 'value') {
+    if (key === 'value' && elm.tagName !== 'PROGRESS') {
       // store value as _value as well since
       // non-string values will be stringified
       elm._value = cur;
@@ -73722,8 +74183,18 @@ function updateDOMProps (oldVnode, vnode) {
       while (svg.firstChild) {
         elm.appendChild(svg.firstChild);
       }
-    } else {
-      elm[key] = cur;
+    } else if (
+      // skip the update if old and new VDOM state is the same.
+      // `value` is handled separately because the DOM value may be temporarily
+      // out of sync with VDOM state due to focus, composition and modifiers.
+      // This  #4521 by skipping the unnecesarry `checked` update.
+      cur !== oldProps[key]
+    ) {
+      // some property updates can throw
+      // e.g. `value` on <progress> w/ non-finite value
+      try {
+        elm[key] = cur;
+      } catch (e) {}
     }
   }
 }
@@ -74224,8 +74695,8 @@ function enter (vnode, toggleDisplay) {
   var context = activeInstance;
   var transitionNode = activeInstance.$vnode;
   while (transitionNode && transitionNode.parent) {
-    transitionNode = transitionNode.parent;
     context = transitionNode.context;
+    transitionNode = transitionNode.parent;
   }
 
   var isAppear = !context._isMounted || !vnode.isRootInsert;
@@ -75315,7 +75786,7 @@ var isNonPhrasingTag = makeMap(
 // Regular Expressions for parsing tags and attributes
 var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
 var dynamicArgAttribute = /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
-var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z" + unicodeLetters + "]*";
+var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z" + (unicodeRegExp.source) + "]*";
 var qnameCapture = "((?:" + ncname + "\\:)?" + ncname + ")";
 var startTagOpen = new RegExp(("^<" + qnameCapture));
 var startTagClose = /^\s*(\/?)>/;
@@ -75577,7 +76048,7 @@ function parseHTML (html, options) {
         ) {
           options.warn(
             ("tag <" + (stack[i].tag) + "> has no matching end tag."),
-            { start: stack[i].start }
+            { start: stack[i].start, end: stack[i].end }
           );
         }
         if (options.end) {
@@ -75614,7 +76085,7 @@ var dynamicArgRE = /^\[.*\]$/;
 
 var argRE = /:(.*)$/;
 var bindRE = /^:|^\.|^v-bind:/;
-var modifierRE = /\.[^.]+/g;
+var modifierRE = /\.[^.\]]+(?=[^\]]*$)/g;
 
 var slotRE = /^v-slot(:|$)|^#/;
 
@@ -75791,7 +76262,7 @@ function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
-    start: function start (tag, attrs, unary, start$1) {
+    start: function start (tag, attrs, unary, start$1, end) {
       // check namespace.
       // inherit parent ns if there is one
       var ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
@@ -75810,6 +76281,7 @@ function parse (
       {
         if (options.outputSourceRange) {
           element.start = start$1;
+          element.end = end;
           element.rawAttrsMap = element.attrsList.reduce(function (cumulated, attr) {
             cumulated[attr.name] = attr;
             return cumulated
@@ -75931,7 +76403,7 @@ function parse (
         text = preserveWhitespace ? ' ' : '';
       }
       if (text) {
-        if (whitespaceOption === 'condense') {
+        if (!inPre && whitespaceOption === 'condense') {
           // condense consecutive whitespaces into single space
           text = text.replace(whitespaceRE$1, ' ');
         }
@@ -77294,7 +77766,7 @@ function genScopedSlots (
   // components with only scoped slots to skip forced updates from parent.
   // but in some cases we have to bail-out of this optimization
   // for example if the slot contains dynamic names, has v-if or v-for on them...
-  var needsForceUpdate = Object.keys(slots).some(function (key) {
+  var needsForceUpdate = el.for || Object.keys(slots).some(function (key) {
     var slot = slots[key];
     return (
       slot.slotTargetDynamic ||
@@ -77303,22 +77775,49 @@ function genScopedSlots (
       containsSlotChild(slot) // is passing down slot from parent which may be dynamic
     )
   });
-  // OR when it is inside another scoped slot (the reactivity is disconnected)
-  // #9438
+
+  // #9534: if a component with scoped slots is inside a conditional branch,
+  // it's possible for the same component to be reused but with different
+  // compiled slot content. To avoid that, we generate a unique key based on
+  // the generated code of all the slot contents.
+  var needsKey = !!el.if;
+
+  // OR when it is inside another scoped slot or v-for (the reactivity may be
+  // disconnected due to the intermediate scope variable)
+  // #9438, #9506
+  // TODO: this can be further optimized by properly analyzing in-scope bindings
+  // and skip force updating ones that do not actually use scope variables.
   if (!needsForceUpdate) {
     var parent = el.parent;
     while (parent) {
-      if (parent.slotScope && parent.slotScope !== emptySlotScopeToken) {
+      if (
+        (parent.slotScope && parent.slotScope !== emptySlotScopeToken) ||
+        parent.for
+      ) {
         needsForceUpdate = true;
         break
+      }
+      if (parent.if) {
+        needsKey = true;
       }
       parent = parent.parent;
     }
   }
 
-  return ("scopedSlots:_u([" + (Object.keys(slots).map(function (key) {
-      return genScopedSlot(slots[key], state)
-    }).join(',')) + "]" + (needsForceUpdate ? ",true" : "") + ")")
+  var generatedSlots = Object.keys(slots)
+    .map(function (key) { return genScopedSlot(slots[key], state); })
+    .join(',');
+
+  return ("scopedSlots:_u([" + generatedSlots + "]" + (needsForceUpdate ? ",null,true" : "") + (!needsForceUpdate && needsKey ? (",null,false," + (hash(generatedSlots))) : "") + ")")
+}
+
+function hash(str) {
+  var hash = 5381;
+  var i = str.length;
+  while(i) {
+    hash = (hash * 33) ^ str.charCodeAt(--i);
+  }
+  return hash >>> 0
 }
 
 function containsSlotChild (el) {
@@ -77653,11 +78152,13 @@ function generateCodeFrame (
 
 function repeat$1 (str, n) {
   var result = '';
-  while (true) { // eslint-disable-line
-    if (n & 1) { result += str; }
-    n >>>= 1;
-    if (n <= 0) { break }
-    str += str;
+  if (n > 0) {
+    while (true) { // eslint-disable-line
+      if (n & 1) { result += str; }
+      n >>>= 1;
+      if (n <= 0) { break }
+      str += str;
+    }
   }
   return result
 }
@@ -78167,7 +78668,7 @@ window.Echo = new laravel_echo__WEBPACK_IMPORTED_MODULE_0__["default"]({
   broadcaster: 'pusher',
   key: "43234ec416c42db6ae41",
   cluster: "ap2",
-  encrypted: true
+  encrypted: false
 });
 
 /***/ }),

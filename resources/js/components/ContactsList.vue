@@ -1,20 +1,57 @@
 <template>
 
 	<div class="contacts-list">
-
-        <ul>
-            <li v-for="contact in sortedContacts" :key="contact.id" @click="selectContact(contact)" :class="{ 'selected': contact == selected }">
-                <div class="avatar">
-                    <img :src="contact.profile_image" :alt="contact.name">
-                </div>
-                <div class="contact">
-                    <p class="name">{{ contact.name }}</p>
-                    <p class="email">{{ contact.email }}</p>
-                    <span v-if="userTyping == contact.id" class="typing">typing...</span>
-                </div>
-                <span class="unread" v-if="contact.unread">{{ contact.unread }}</span>
+        <input class="searchContact" type="text" placeholder="Search..">
+        <ul class="nav nav-tabs" id="myTab">
+            <li class="nav-item">
+                <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all">All</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="groups-tab" data-toggle="tab" href="#groupsTab">Groups</a>
             </li>
         </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="all">
+                <ul class="innerList">
+                    <li v-for="contact in sortedContacts" :key="contact.id" @click="selectContact(contact)" :class="{ 'selected': contact == selected }">
+                        <div class="avatar">
+                            <img :src="contact.profile_image" :alt="contact.name" :class="{'online': onlineUsers.find(onlineUser=>onlineUser.id === contact.id) ? 1:0}">
+                        </div>
+                        <div class="contact">
+                            <p class="name">{{ contact.name }}</p>
+                            <p class="email">{{ contact.email }}</p>
+                            <span v-if="userTyping == contact.id" class="typing">typing...</span>
+                        </div>
+                        <span class="unread" v-if="contact.unread">{{ contact.unread }}</span>
+                    </li>
+                </ul>
+            </div>
+
+
+            <div class="tab-pane fade" id="groupsTab">
+                <form @submit.prevent="submit">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" name="name" id="name" v-model="formInfo.name" value="PATCH"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Group</button>
+                </form>
+                
+                <ul class="innerList">
+                    <li v-for="group in sortedGroups" :key="group.id" @click="selectGroup(group)">
+                        <div class="avatar">
+                            <img :src="group.profile_image" :alt="group.name">
+                        </div>
+                        <div class="contact">
+                            <p class="name">{{ group.name }}</p>
+                        </div>
+                    </li>
+                </ul>
+
+            </div>
+        </div>
+     
 
 
 	</div>
@@ -30,25 +67,35 @@
 			contacts: {
 				type: Array,
 				default: []
-			}
+			},
+            groups: {
+                type: Array,
+                default: []
+            },
 		},
 		data() {
 			return {
 				selected: this.contacts.length ? this.contacts[0] : null,
-                userTyping: null
+                groupSelected: this.groups.length ? this.groups[0] : null,
+                userTyping: null,
+                onlineUsers: [],
+                formInfo: {},
 			};
 		},
         created() {
 
             Echo.join(`privateStatus`)
                 .here((users) => {
-                    console.log(users.name);
+                    this.onlineUsers = users;
+                    console.log("Online: ",users);
                 })
                 .joining((user) => {
-                    console.log(user.name);
+                    this.onlineUsers.push(user);
+                    console.log("Joining: ",user.name);
                 })
                 .leaving((user) => {
-                    console.log(user.name);
+                    this.onlineUsers.splice(this.onlineUsers.indexOf(user), 1);
+                    console.log("Leaving: ",user.name);
                 });
 
             Echo.private(`typing.${this.user.id}`)
@@ -63,10 +110,28 @@
         },
 		methods: {
 			selectContact(contact) {
+                // this.groupSelected = null;
+                // this.$emit('groupSelected', null);
 				this.selected = contact;
-
 				this.$emit('selected', contact);
-			}
+			},
+            selectGroup(group) {
+                // this.selected = null;
+                // this.$emit('selected', null);
+                this.groupSelected = group;
+                this.$emit('groupSelected', group);
+            },
+            submit() {
+                axios.post('/createGroup', this.formInfo).then(response => {
+                    alert('Message sent!');
+                    this.formInfo = "";
+                })
+                .catch(error => {
+                    if (error.response.status === 422) {
+                        this.errors = error.response.data.errors || {};
+                    }
+                });
+            },
 		},
         computed: {
             sortedContacts() {
@@ -75,11 +140,22 @@
                     //     return Infinity;
                     // }
 
-                    return contact.unread;
+                    return contact.latest;
                     // return contact.created_at;
                 }]).reverse();
+            },
+            sortedGroups() {
+                return _.sortBy(this.groups, [(group) => {
+                    return group.created_at;
+                }]).reverse();
             }
-        }
+        },
+        watch: {
+            updateContacts(contacts) {
+                this.sortedContacts();
+            }
+        },
+        
 	};
 </script>
 
@@ -87,13 +163,38 @@
     
     .contacts-list {
         flex: 2;
-        max-height: 590px;
+        height: 592px;
         overflow: scroll;
         overflow-x: hidden;
         border-left: 1px solid lightgray;
         background: #b9b9b9;
 
-        ul {
+        .searchContact {
+            width: 100%;
+            height: 33px;
+            background: #9ea7af;
+            color: white;
+            padding: 20px;
+            font-size: 20px;
+            border: 2px solid #cce3f6;
+
+            &::placeholder {
+                color: white;
+            }
+        }
+
+        ul.nav {
+            li {
+                text-align: center;
+                width: 50%;
+                color: #6c757d;
+                font-size: 17px;
+                box-sizing: border-box;
+                font-weight: bold;
+            }
+        }
+
+        ul.innerList {
         	list-style-type: none;
         	padding-left: 0;
 
@@ -110,7 +211,7 @@
 				}
 		
                 span.unread {
-                    background: #85e085;
+                    background: #cce3f6;
                     color: white;
                     min-width: 20px;
                     display: flex;
@@ -135,7 +236,13 @@
         		        width: 40px;
         		        border-radius: 50%;
         		        margin: 0 auto;
+                        border: 3px solid #909090;
+
+                        &.online {
+                            border: 3px solid #cce3f6;
+                        }
         		    }
+                    
         		}
 
         		.contact {

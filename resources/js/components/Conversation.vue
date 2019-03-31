@@ -1,11 +1,12 @@
 <template>
 
 	<div class="conversation">
-		<h1>{{ contact ? contact.name : 'Select a Contact' }}
+
+		<h1>{{ contact ? contact.name : (selectedGroup ? selectedGroup.name : 'Select a Contact') }}
 			<span v-if="isTyping" style="float:right; color: #639a5d;">typing.....</span>
 		</h1>
-		<MessagesFeed :contact="contact" :messages="messages" />
-		<MessageComposer @send="sendMessage" :selectedContact="contact" :user="authUser" />
+		<MessagesFeed  @deleteMsg="deleteMsg" :contact="contact" :selectedGroup="selectedGroup" :messages="messages" :groupMessages="groupMessages" :user="authUser"/>
+		<MessageComposer @send="sendMessage" :selectedContact="contact" :selectedGroup="selectedGroup" :user="authUser" />
 	</div>
 	
 </template>
@@ -22,7 +23,14 @@
 			contact: {
 				type: Object
 			},
+			selectedGroup: {
+				type: Object
+			},
 			messages: {
+				type: Array,
+				default: []
+			},
+			groupMessages: {
 				type: Array,
 				default: []
 			}
@@ -50,16 +58,46 @@
         },
 		methods: {
 			sendMessage(text) {
-				if (!this.contact) {
+				if (!this.contact && !this.selectedGroup ) {
 					return;
 				}
 
-				axios.post('/conversation/send', {
-					contact_id: this.contact.id,
-					text: text
-				}).then((response) => {
-					this.$emit('new', response.data);
-				});
+				if(this.contact != null)
+				{
+					axios.post('/conversation/send', {
+						contact_id: this.contact.id,
+						text: text
+					}).then((response) => {
+						this.$emit('new', response.data);
+					});
+				}
+				else {
+					axios.post('/conversation/group/send', {
+						group_id: this.selectedGroup.id,
+						text: text
+					}).then((response) => {
+						this.$emit('new', response.data);
+					});
+				}
+			},
+			deleteMsg(message, contact, selectedGroup) {
+				if(contact != null)
+				{
+					axios.post(`/delete/msg/${message.id}`, {
+						message: message,
+						contact: contact
+					}).then((response) => {
+						this.$emit('delete', response.data);
+					});
+				}
+				else {
+					axios.post(`/delete/group/msg/${message.id}`, {
+						message: message,
+						group: selectedGroup
+					}).then((response) => {
+						this.$emit('delete', response.data);
+					});
+				}
 			}
 		},
 		components: {MessagesFeed, MessageComposer}

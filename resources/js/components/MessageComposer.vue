@@ -10,6 +10,9 @@
 			user: {
                 type: Object
             },
+			selectedGroup: {
+                type: Object
+            },
             selectedContact: {
 				type: Object
 			}
@@ -30,11 +33,11 @@
 			},
 			typingEvent() {
 
-			    Echo.private(`typing.${this.selectedContact.id}`)
-			    	.whisper('typing', {
-		    	        user: this.user,
-        				typing: true
-		    	    });
+			    // Echo.private(`typing.${this.selectedContact.id}`)
+			    // 	.whisper('typing', {
+		    	//         user: this.user,
+       //  				typing: true
+		    	//     });
 
 			}
 		}

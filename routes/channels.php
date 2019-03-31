@@ -26,3 +26,8 @@ Broadcast::channel('privateStatus', function ($user) {
     	return $user;
     }
 });
+
+
+Broadcast::channel('group.{id}', function ($user, $id) {
+    return (int) $user->inGroup()->where('id', id) === (int) $id;
+});
