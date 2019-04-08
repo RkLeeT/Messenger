@@ -42,3 +42,10 @@ Route::post('/conversation/group/send', 'ContactsController@groupSend');
 Route::post('/delete/group/msg/{id}', 'ContactsController@deleteGroupMsg');
 Route::post('/delete/msg/{id}', 'ContactsController@deleteMsg');
 
+
+
+Route::get('/getGroupInfo/{id}', 'ContactsController@getGroupInfo');
+
+Route::post('/deleteGroup/{id}', 'ContactsController@deleteGroup');
+
+Route::post('/addUsersToGroup/{id}', 'ContactsController@addUsersToGroup');

@@ -3,7 +3,7 @@
 	<div class="conversation">
 
 		<h1>{{ contact ? contact.name : (selectedGroup ? selectedGroup.name : 'Select a Contact') }}
-			<span v-if="isTyping" style="float:right; color: #639a5d;">typing.....</span>
+			<span v-if="contact && isTyping" style="float:right; color: #639a5d;">typing.....</span>
 		</h1>
 		<MessagesFeed  @deleteMsg="deleteMsg" :contact="contact" :selectedGroup="selectedGroup" :messages="messages" :groupMessages="groupMessages" :user="authUser"/>
 		<MessageComposer @send="sendMessage" :selectedContact="contact" :selectedGroup="selectedGroup" :user="authUser" />
@@ -80,22 +80,23 @@
 					});
 				}
 			},
-			deleteMsg(message, contact, selectedGroup) {
-				if(contact != null)
+			deleteMsg(data) {
+				if(data.contact != null)
 				{
-					axios.post(`/delete/msg/${message.id}`, {
-						message: message,
-						contact: contact
+					axios.post(`/delete/msg/${data.message.id}`, {
+						message: data.message,
+						contact: data.contact
 					}).then((response) => {
-						this.$emit('delete', response.data);
+						this.$emit('delete', data);
 					});
 				}
-				else {
-					axios.post(`/delete/group/msg/${message.id}`, {
-						message: message,
-						group: selectedGroup
+				else
+				{
+					axios.post(`/delete/group/msg/${data.message.id}`, {
+						message: data.message,
+						group: data.selectedGroup
 					}).then((response) => {
-						this.$emit('delete', response.data);
+						this.$emit('delete', data);
 					});
 				}
 			}

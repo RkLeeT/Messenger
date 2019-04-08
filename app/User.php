@@ -28,9 +28,14 @@ class User extends Authenticatable
         'password', 'remember_token',
     ];
 
-    public function inGroup()
+    public function groups()
     {
-        return $this->belongsToMany(Group::class, 'user_id', 'id');
+        return $this->belongsToMany(Group::class);
+    }
+
+    public function hasGroupMessages()
+    {
+        return $this->hasMany(GroupMessages::class, 'user_id', 'id');
     }
 
 }

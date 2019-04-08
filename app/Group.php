@@ -8,9 +8,15 @@ class Group extends Model
 {
     protected $guarded = [];
 
-    public function hasUsers()
+    public function users()
     {
-        return $this->hasMany(User::class, 'id', 'user_id');
+        return $this->belongsToMany(User::class);
     }
+
+    public function hasMessages()
+    {
+    	return $this->hasMany(GroupsMessages::class, 'group_id', 'id');
+    }
+
 
 }

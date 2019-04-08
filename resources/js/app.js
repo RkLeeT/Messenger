@@ -5,9 +5,13 @@
  * building robust, powerful web applications using Vue and Laravel.
  */
 
+// window.$ = window.jQuery = require('jquery');
 require('./bootstrap');
 
 window.Vue = require('vue');
+
+require('../../node_modules/bootstrap-select/dist/js/bootstrap-select');
+// require('../../node_modules/bootstrap-select/js/bootstrap-select');
 
 /**
  * The following block of code may be used to automatically register your
@@ -20,6 +24,7 @@ window.Vue = require('vue');
 // const files = require.context('./', true, /\.vue$/i)
 // files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
+Vue.component('vue-multiselect', window.VueMultiselect.default)
 Vue.component('chat-app', require('./components/ChatApp.vue').default);
 
 /**

@@ -12,6 +12,11 @@ class GroupsMessages extends Model
 
     public function fromContact()
     {
-    	return $this->hasOne(User::class, 'id', 'user_id');
+    	return $this->belongsTo(User::class, 'id', 'user_id');
+    }
+
+    public function fromGroup()
+    {
+    	return $this->belongsTo(Group::class, 'id', 'group_id');
     }
 }

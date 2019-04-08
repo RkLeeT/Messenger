@@ -1,9 +1,9 @@
 <template>
 	<div class="feed" ref="feed">
 		<ul v-if="contact">
-			<li v-for="message in messages" :class="`message${message.to == contact.id ? ' sent' : ' received'}`">
+			<li v-for="(message, index) in messages" @mouseover="hover(index)" @mouseout="hover(-1)" :class="`message${message.to == contact.id ? ' sent' : ' received'}`">
 				<div class="text">
-					<span class="closeButton float-right clearfix" @click="deleteMsg(message, contact, selectedGroup)">X</span>
+					<span v-if="{'selected': isSelected(index)}" class="closeButton float-right clearfix" @click="deleteMsg(message, contact, selectedGroup)">X</span>
 					{{ message.text }}
 					<hr class="m-1">
 					<span class="time">
@@ -14,9 +14,9 @@
 		</ul>
 
 		<ul v-if="selectedGroup">
-			<li v-for="message in groupMessages" :class="`message${message.user_id == user.id ? ' sent' : ' received'}`">
+			<li v-for="(message, index) in groupMessages" @mouseover="hover(index)" @mouseout="hover(-1)" :class="`message${message.user_id == user.id ? ' sent' : ' received'}`">
 				<div class="text">
-					<span class="closeButton float-right clearfix" @click="deleteMsg(message, contact, selectedGroup)">X</span>
+					<span v-if="{'selected': isSelected(index)}" class="closeButton float-right clearfix" @click="deleteMsg(message, contact, selectedGroup)">X</span>
 					{{ message.text }}
 					<hr class="m-1">
 					<span class="time">
@@ -51,6 +51,11 @@
 				required: false
 			},
 		},
+		data() {
+			return {
+				hoverli : -1
+			}
+		},
 		methods: {
 			scrollToBottom() {
 				setTimeout(() => {
@@ -64,6 +69,15 @@
 					'contact': contact, 
 					'selectedGroup': selectedGroup
 				});
+			},
+			hover(selectedIndex)
+			{
+			    this.hoverli = selectedIndex
+			},
+
+			isSelected(index)
+			{
+			    return this.hoverli === index
 			}
 		},
 		watch: {

@@ -1,64 +1,82 @@
 <template>
 
-	<div class="contacts-list">
-        <input class="searchContact" type="text" placeholder="Search..">
-        <ul class="nav nav-tabs" id="myTab">
-            <li class="nav-item">
-                <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all">All</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="groups-tab" data-toggle="tab" href="#groupsTab">Groups</a>
-            </li>
-        </ul>
+    <div class="list" style="position: relative;">
+        <ProfileInfo v-if="selectInfo" :contact="contactInfo" :group="groupInfo" @cancel="closeInfo" /> 
+        <div v-else class="contacts-list">
+            <input class="searchContact" type="text" placeholder="Search..">
+            <ul class="nav nav-tabs" id="myTab">
+                <li class="nav-item">
+                    <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all">All</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="groups-tab" data-toggle="tab" href="#groupsTab">Groups</a>
+                </li>
+            </ul>
 
-        <div class="tab-content" id="myTabContent">
-            <div class="tab-pane fade show active" id="all">
-                <ul class="innerList">
-                    <li v-for="contact in sortedContacts" :key="contact.id" @click="selectContact(contact)" :class="{ 'selected': contact == selected }">
-                        <div class="avatar">
-                            <img :src="contact.profile_image" :alt="contact.name" :class="{'online': onlineUsers.find(onlineUser=>onlineUser.id === contact.id) ? 1:0}">
-                        </div>
-                        <div class="contact">
-                            <p class="name">{{ contact.name }}</p>
-                            <p class="email">{{ contact.email }}</p>
-                            <span v-if="userTyping == contact.id" class="typing">typing...</span>
-                        </div>
-                        <span class="unread" v-if="contact.unread">{{ contact.unread }}</span>
-                    </li>
-                </ul>
-            </div>
+            <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="all">
+                    <ul class="innerList">
+                        <li v-for="contact in sortedContacts" :key="contact.id" @click="selectContact(contact)" :class="{ 'selected': contact == selected }">
+                            <div class="avatar">
+                                <img :src="contact.profile_image" :alt="contact.name" :class="{'online': onlineUsers.find(onlineUser=>onlineUser.id === contact.id) ? 1:0}">
+                            </div>
+                            <div class="contact">
+                                <p class="name">{{ contact.name }}</p>
+                                <p class="email">{{ contact.email }}</p>
+                                <span v-if="userTyping == contact.id" class="typing">typing...</span>
+                            </div>
+                            <span class="unread" v-if="contact.unread">{{ contact.unread }}</span>
+                        </li>
+                    </ul>
+                </div>
 
 
-            <div class="tab-pane fade" id="groupsTab">
-                <form @submit.prevent="submit">
-                    <div class="form-group">
-                        <label for="name">Name</label>
-                        <input type="text" class="form-control" name="name" id="name" v-model="formInfo.name" value="PATCH"/>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Create Group</button>
-                </form>
-                
-                <ul class="innerList">
-                    <li v-for="group in sortedGroups" :key="group.id" @click="selectGroup(group)">
-                        <div class="avatar">
-                            <img :src="group.profile_image" :alt="group.name">
+                <div class="tab-pane fade" id="groupsTab">
+                    <form @submit.prevent="submit">
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" class="form-control" name="name" id="name" v-model="formInfo.name" value="PATCH"/>
                         </div>
-                        <div class="contact">
-                            <p class="name">{{ group.name }}</p>
-                        </div>
-                    </li>
-                </ul>
+                        <button type="submit" class="btn btn-primary">Create Group</button>
+                    </form>
+                    
+                    <ul class="innerList">
+                        <li v-for="group in sortedGroups" :key="group.id">
+                            <div class="li-div" @click="selectGroup(group)">
+                                <div class="avatar">
+                                    <img :src="group.profile_image" :alt="group.name">
+                                </div>
+                                <div class="contact">
+                                    <p class="name">{{ group.name }}</p>
+                                </div>
+                            </div>
 
+                            <div class="dropdown" style="align-self: center;">
+                                <button class="btn btn-sm dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown">
+                                  </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#" @click="displayInfo(group, 1)">Group Info</a>
+                                    <a class="dropdown-item" href="#" @click="deleteGroup(group)">Delete Group</a>
+                                    <a class="dropdown-item" href="#" @click="deleteGroup(group)">Exit Group</a>
+                                </div>
+                            </div>
+                            
+
+                        </li>
+                    </ul>
+
+                </div>
             </div>
         </div>
-     
-
-
-	</div>
+    </div>
+	
 	
 </template>
 
 <script>
+
+    import ProfileInfo from './ProfileInfo'
+
 	export default {
 		props: {
             user: {
@@ -80,6 +98,9 @@
                 userTyping: null,
                 onlineUsers: [],
                 formInfo: {},
+                selectInfo: false,
+                contactInfo: null,
+                groupInfo: null,
 			};
 		},
         created() {
@@ -123,7 +144,7 @@
             },
             submit() {
                 axios.post('/createGroup', this.formInfo).then(response => {
-                    alert('Message sent!');
+                    alert('Group Created!');
                     this.formInfo = "";
                 })
                 .catch(error => {
@@ -131,6 +152,36 @@
                         this.errors = error.response.data.errors || {};
                     }
                 });
+            },
+            displayInfo(what, which) {
+                this.selectInfo = !this.selectInfo;
+                if(which == 1)
+                    this.groupInfo = what;
+                else
+                    this.contactInfo = what;
+
+            },
+            closeInfo() {
+                this.selectInfo = !this.selectInfo;
+                this.groupInfo = null;
+                this.contactInfo = null;
+            },
+            deleteGroup(group) {
+                axios.post(`/deleteGroup/${group.id}`)
+                    .then((response) => {
+                        alert('Group Deleted!');
+                    })
+                    .catch(error => {
+                        if (error.response.status === 422) {
+                            this.errors = error.response.data.errors || {};
+                        }
+                    });
+
+                if(this.groupSelected == group)
+                {
+                    this.groupSelected = null;
+                    this.selectInfo = null;
+                }    
             },
 		},
         computed: {
@@ -155,19 +206,29 @@
                 this.sortedContacts();
             }
         },
+        components: {ProfileInfo}
         
 	};
 </script>
 
 <style lang="scss" scoped>
     
+.list {
+
+    flex: 2;
+    height: 599px;
+    overflow: scroll;
+    overflow-x: hidden;
+    border-left: 1px solid lightgray;
+    background: #b9b9b9;
+
     .contacts-list {
-        flex: 2;
-        height: 592px;
-        overflow: scroll;
-        overflow-x: hidden;
         border-left: 1px solid lightgray;
         background: #b9b9b9;
+
+        .tab-content {
+            padding: 0;
+        }
 
         .searchContact {
             width: 100%;
@@ -210,6 +271,12 @@
 					background: #e4e4e4;
 				}
 		
+                .li-div {
+                    display: flex;
+                    position: relative;
+                    width: 100%;
+                }
+
                 span.unread {
                     background: #cce3f6;
                     color: white;
@@ -271,5 +338,6 @@
         	}
         }
     }
+} 
 
 </style>

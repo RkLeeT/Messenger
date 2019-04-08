@@ -71,19 +71,19 @@
                     })
             },
             saveNewMessage(message) {
-                if (this.contact != null) {
+                if (this.selectedContact != null) {
                     this.messages.push(message);
                 }
                 else {
                     this.groupMessages.push(message);
                 }
             },
-            deleteMessage(message, contact, selectedGroup) {
-                if (contact != null) {
-                    this.messages.splice(this.messages.indexOf(message.id), 1);
+            deleteMessage(data) {
+                if (data.contact != null) {
+                    this.messages.splice(this.messages.indexOf(data.message), 1);
                 }
                 else {
-                    this.groupMessages.splice(this.groupMessages.indexOf(message.id), 1);
+                    this.groupMessages.splice(this.groupMessages.indexOf(data.message), 1);
                 }
             },
             handleIncoming(message) {

@@ -9,29 +9,23 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Scripts -->
-    <script src="{{ asset('js/app.js') }}" defer></script>
-
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet" type="text/css">
 
 
 
-    <link rel="stylesheet" type="text/css" href="{{ asset('semantic/semantic.min.css') }}">
-    <script
-      src="https://code.jquery.com/jquery-3.1.1.min.js"
-      integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
-      crossorigin="anonymous"></script>
-    <script src="{{ asset('semantic/semantic.min.js') }}"></script>
-
-
-
-
-
-
     <!-- Styles -->
-    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    {{-- <link rel="stylesheet" type="text/css" href="{{ asset('semantic/semantic.min.css') }}"> --}}
+    <link rel="stylesheet" type="text/css" href="{{ asset('mdb/css/mdb.min.css') }}">
+    {{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"> --}}
+    <link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.0/dist/vue-multiselect.min.css">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+
+    
+
+    
+
 </head>
 <body>
     <div id="app">
@@ -90,16 +84,49 @@
             @yield('content')
         </main>
     </div>
+
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+
+    {{-- <script src="{{ asset('semantic/semantic.min.js') }}"></script> --}}
+    <script src="{{ asset('mdb/js/mdb.min.js') }}"></script>
+    {{-- <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script> --}}
+    <script src="https://unpkg.com/vue-multiselect@2.1.0"></script>
+    <script src="{{ asset('js/app.js') }}" defer></script>
+
+
+
+
+    <!-- Scripts -->
+    <script>
+
+      window.Laravel = {!! json_encode([
+        'csrfToken' => csrf_token(),
+        'user' => Auth::user(),
+        'pusherKey' => config('broadcasting.connections.pusher.key'),
+      ]) !!};
+
+
+        $(document).ready(function() {
+
+           
+           // $('select').formSelect();
+            
+
+           // $('.mdb-select').material_select();
+
+        });
+
+    </script>
+
+
+        
+        
+
+
 </body>
 
-<!-- Scripts -->
-<script>
-  window.Laravel = {!! json_encode([
-    'csrfToken' => csrf_token(),
-    'user' => Auth::user(),
-    'pusherKey' => config('broadcasting.connections.pusher.key'),
-  ]) !!};
-</script>
 
 
 </html>

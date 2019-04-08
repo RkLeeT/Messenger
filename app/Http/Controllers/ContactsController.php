@@ -7,6 +7,7 @@ use App\User;
 use App\Message;
 use App\Group;
 use App\GroupsMessages;
+use App\UsersGroups;
 use App\Events\NewMessage;
 use App\Events\GroupMessage;
 
@@ -107,6 +108,11 @@ class ContactsController extends Controller
             'admin' => Auth::id(),
         ]);
 
+        UsersGroups::create([
+            'group_id' => $newGroup->id,
+            'user_id' => $newGroup->admin,
+        ]);
+
         return response()->json($request, 200);
 
     }
@@ -134,5 +140,57 @@ class ContactsController extends Controller
         return response()->json($msg, 200);
     }
 
+    public function getGroupInfo($id)
+    {
+        $group = Group::find($id);
 
+        $group_users = $group->users;
+
+        var_dump($group_users);
+        
+        $other_users = User::whereNotIn('id', $group_users)->get();
+
+        return response()->json([
+            'group_users' => $group_users,
+            'other_users' => $other_users
+        ]);
+    }
+
+    public function deleteGroup($id)
+    {
+        $group = Group::find($id);
+
+        UsersGroups::where('group_id', '=', $id)->delete();
+        $group->hasMessages()->delete();
+
+        $group->delete();
+
+        return response()->json([
+            'group_users' => $group->users
+        ]);
+
+    }
+
+    
+    public function addUsersToGroup(Request $request, $id)
+    {
+        $group = Group::find($id);
+
+        
+
+        $users = $request->all();
+
+        foreach($users as $user)
+        {
+
+            $add_user = new UsersGroups;
+            $add_user->group_id = $id;
+            $add_user->user_id = $user["id"];
+            $add_user->save();
+        }
+
+        
+
+
+    }
 }
